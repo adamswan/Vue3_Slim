@@ -1,0 +1,8 @@
+# 忽略 node_modules 目录
+node_modules
+# 忽略 .DS_Store 文件（Mac 系统）
+.DS_Store
+# 忽略日志文件
+*.log
+# 忽略环境变量文件
+.env
