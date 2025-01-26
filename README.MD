@@ -1,6 +1,10 @@
 # Vue3-slim 是什么
 
-手写一个 Vue3 ，包含 Vue 的三个核心模块：complier-core 、runtime-core 、reactivity
+Vue3-slim 是一个简化版的 Vue3 ，只实现 Vue3 的主干逻辑，不考虑各类边界情况
+
+# 有哪些核心功能
+
+包含 Vue 的三个核心模块：complier-core 、runtime-core 、reactivity
 
 # 技术栈
 
