@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      let obj1 = {
+        a: '高',
+        b: '圆圆',
+        // get 标记
+        get getName() {
+          console.log('this', this);
+          return this.a + this.b;
+        }
+      };
+
+      let p = new Proxy(obj1, {
+        get(target, key, receiver) {
+          //
+          console.log('get执行');
+          // Reflect.get 的第3个参数 receiver，用于限制 this 只能指向代理对象 p，
+          // 所以才能让 get 函数执行三次
+          return Reflect.get(target, key, receiver);
+        }
+      });
+
+      console.log(p.getName);
+    </script>
+  </body>
+</html>

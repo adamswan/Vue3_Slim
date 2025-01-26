@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      let target = {
+        price: 10, // 价格
+        count: 2 // 数量
+      };
+
+      const p = new Proxy(target, {
+        get(target, key, receiver) {
+          // target 是原始对象；key 是属性名；receiver 是 Proxy 或者继承 Proxy 的对象
+          console.log('get执行', target, key, receiver);
+
+          return Reflect.get(target, key, receiver);
+        },
+
+        set(target, key, newvVal, receiver) {
+          // target 是原始对象；key 是属性名；newvVal 是新值；receiver 是 Proxy 或者继承 Proxy 的对象
+          console.log('set执行', target, key, newvVal, receiver);
+
+          // 设置新值
+          return Reflect.set(target, key, newvVal, receiver);
+        }
+      });
+
+      let total = 0;
+
+      function getSum() {
+        total = p.price * p.count;
+        console.log('总价', total);
+      }
+
+      getSum();
+    </script>
+  </body>
+</html>

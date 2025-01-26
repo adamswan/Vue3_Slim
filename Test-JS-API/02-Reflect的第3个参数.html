@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      let obj1 = {
+        a: '高',
+        b: '圆圆',
+        // get 标记
+        get getName() {
+          return this.a + this.b;
+        }
+      };
+
+      let obj2 = {
+        a: '刘',
+        b: '亦菲',
+        // get 标记
+        get getName() {
+          return this.a + this.b;
+        }
+      };
+
+      console.log('直接访问obj1.getName--', obj1.getName);
+      console.log('直接访问obj2.getName--', obj2.getName);
+
+      console.log('用Reflect访问obj1.getName--', Reflect.get(obj1, 'getName'));
+
+      //  Reflect.get 方法的第3个参数 receiver，就是新的 this 指向
+      console.log('用Reflect访问obj1.getName，指定receiver--', Reflect.get(obj1, 'getName', obj2));
+    </script>
+  </body>
+</html>
