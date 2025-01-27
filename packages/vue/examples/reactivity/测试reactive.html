@@ -12,11 +12,13 @@
       const { reactive } = Vue;
 
       let obj = reactive({
-        name: '张三',
+        name: '高圆圆',
         age: 18
       });
 
-      console.log(obj);
+      console.log(obj.name);
+
+      obj.name = '刘亦菲';
     </script>
   </body>
 </html>

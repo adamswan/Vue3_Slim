@@ -11,9 +11,9 @@ export function reactive(target: object) {
 
 // 在这个函数中，我们用 new Proxy() 代理了 target
 function createReactiveObject(
-  target: object,
-  baseHandlers: ProxyHandler<any>,
-  proxyMap: WeakMap<object, any>
+  target: object, // 原始对象
+  baseHandlers: ProxyHandler<any>, // Proxy 的 handlers
+  proxyMap: WeakMap<object, any> // 存储代理对象的 weakmap
 ) {
   // 先从 proxyMap 中读取，如果存在则直接返回【单例模式的思想】
   const existingProxy = proxyMap.get(target);
