@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app">
+      <div class="wife1"></div>
+      <div class="wife2"></div>
+    </div>
+
+    <script src="../../dist/vue.js"></script>
+
+    <script>
+      const { reactive, effect } = Vue;
+
+      let obj = reactive({
+        name: '高圆圆'
+      });
+
+      effect(() => {
+        document.querySelector('.wife1').innerText = obj.name;
+      });
+
+      effect(() => {
+        document.querySelector('.wife2').innerText = obj.name;
+      });
+    </script>
+  </body>
+</html>

@@ -6,19 +6,26 @@
     <title>Document</title>
   </head>
   <body>
+    <div id="app"></div>
+
     <script src="../../dist/vue.js"></script>
 
     <script>
-      const { reactive } = Vue;
+      const { reactive, effect } = Vue;
 
       let obj = reactive({
         name: '高圆圆',
         age: 18
       });
 
-      console.log(obj.name);
+      effect(() => {
+        document.getElementById('app').innerHTML = obj.name;
+      });
 
-      obj.name = '刘亦菲8';
+      // 2秒后修改obj.name
+      setTimeout(() => {
+        obj.name = '刘亦菲';
+      }, 2000);
     </script>
   </body>
 </html>

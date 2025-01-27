@@ -15,7 +15,7 @@ function createReactiveObject(
   baseHandlers: ProxyHandler<any>, // Proxy 的 handlers
   proxyMap: WeakMap<object, any> // 存储代理对象的 weakmap
 ) {
-  // 先从 proxyMap 中读取，如果存在则直接返回【单例模式的思想】
+  // 先从 proxyMap 中读取，如果存在则直接返回, 【单例模式的思想】
   const existingProxy = proxyMap.get(target);
 
   if (existingProxy) {
