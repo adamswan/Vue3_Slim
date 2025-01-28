@@ -82,9 +82,20 @@ export function trigger(target: object, key: unknown, newValue: unknown) {
 export function triggerEffects(dep: Dep) {
   const effects = Array.isArray(dep) ? dep : [...dep];
 
+  // 先执行 computed 的副作用函数
   for (let i = 0; i < effects.length; i++) {
     let effect = effects[i];
-    triggerEffect(effect);
+    if (effect.computed) {
+      triggerEffect(effect);
+    }
+  }
+
+  // 再执行普通的副作用函数
+  for (let i = 0; i < effects.length; i++) {
+    let effect = effects[i];
+    if (!effect.computed) {
+      triggerEffect(effect);
+    }
   }
 }
 

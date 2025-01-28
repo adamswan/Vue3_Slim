@@ -110,9 +110,19 @@ var Vue = (function (exports) {
     // 遍历 Set 集合，依次执行副作用函数
     function triggerEffects(dep) {
         var effects = Array.isArray(dep) ? dep : __spreadArray([], __read(dep), false);
+        // 先执行 computed 的副作用函数
         for (var i = 0; i < effects.length; i++) {
             var effect_1 = effects[i];
-            triggerEffect(effect_1);
+            if (effect_1.computed) {
+                triggerEffect(effect_1);
+            }
+        }
+        // 再执行普通的副作用函数
+        for (var i = 0; i < effects.length; i++) {
+            var effect_2 = effects[i];
+            if (!effect_2.computed) {
+                triggerEffect(effect_2);
+            }
         }
     }
     function triggerEffect(effect) {
