@@ -147,6 +147,13 @@ var Vue = (function (exports) {
         }
         return false;
     }
+    // 判断值前后是否发生变化
+    function hasChanged(value, oldValue) {
+        if (Object.is(value, oldValue)) {
+            return false;
+        }
+        return true;
+    }
 
     // reactiveMap 就是 proxyMap，是一个 WeakMap，
     // 它的键是原始对象，值是代理对象
@@ -198,6 +205,7 @@ var Vue = (function (exports) {
             this.dep = undefined;
             // __v_isRef 是一个标识，用于判断是否为 ref 对象
             this.__v_isRef = true;
+            this._rawValue = value;
             this._value = __v_isShallow ? value : toReactive(value);
         }
         Object.defineProperty(RefImpl.prototype, "value", {
@@ -208,8 +216,13 @@ var Vue = (function (exports) {
             },
             // 在 set 对应的回调中设定新value，并触发依赖
             set: function (newVal) {
-                // 在 set 中触发依赖
-                this._value = newVal;
+                if (hasChanged(newVal, this._rawValue)) {
+                    // 判断值前后是否发生变化
+                    // 如果发生变化，则将新值赋值给 _rawValue, 下一次还要判断
+                    this._rawValue = newVal;
+                    this._value = toReactive(newVal);
+                    triggerRefValue(this);
+                }
             },
             enumerable: false,
             configurable: true
@@ -220,6 +233,12 @@ var Vue = (function (exports) {
     function trackRefValue(ref) {
         if (activeEffect) {
             trackEffects(ref.dep || (ref.dep = createDep()));
+        }
+    }
+    // 触发依赖
+    function triggerRefValue(ref) {
+        if (ref.dep) {
+            triggerEffects(ref.dep);
         }
     }
     // 判断是否为 ref 对象

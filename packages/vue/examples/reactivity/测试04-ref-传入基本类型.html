@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="app">
+      <div class="wife1"></div>
+      <div class="wife2"></div>
+    </div>
+
+    <script src="../../dist/vue.js"></script>
+
+    <script>
+      const { ref, effect } = Vue;
+
+      let obj = ref('高圆圆');
+
+      effect(() => {
+        document.querySelector('.wife1').innerText = obj.value;
+      });
+      effect(() => {
+        document.querySelector('.wife2').innerText = obj.value;
+      });
+
+      // 两秒后都变成刘亦菲
+      setTimeout(() => {
+        obj.value = '刘亦菲';
+      }, 1000);
+    </script>
+  </body>
+</html>

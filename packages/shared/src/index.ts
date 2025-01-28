@@ -9,3 +9,11 @@ export function isObject(value: unknown) {
   }
   return false;
 }
+
+// 判断值前后是否发生变化
+export function hasChanged(value: any, oldValue: any): boolean {
+  if (Object.is(value, oldValue)) {
+    return false;
+  }
+  return true;
+}
