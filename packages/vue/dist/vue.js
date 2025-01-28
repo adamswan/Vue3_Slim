@@ -50,10 +50,12 @@ var Vue = (function (exports) {
     };
 
     // 接收函数，并注册为副作用函数
-    function effect(fn) {
+    function effect(fn, options) {
         var _effect = new ReactiveEffect(fn);
-        // 初次执行副作用函数
-        _effect.run();
+        // 如果开启了 lazy，则不立即执行副作用函数
+        if (options === undefined || options.lazy === false) {
+            _effect.run();
+        }
     }
     // 存储当前激活的 ReactiveEffect
     var activeEffect;
