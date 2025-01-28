@@ -58,8 +58,10 @@ var Vue = (function (exports) {
     // 存储当前激活的 ReactiveEffect
     var activeEffect;
     var ReactiveEffect = /** @class */ (function () {
-        function ReactiveEffect(fn) {
+        function ReactiveEffect(fn, scheduler) {
+            if (scheduler === void 0) { scheduler = null; }
             this.fn = fn;
+            this.scheduler = scheduler;
             //
         }
         ReactiveEffect.prototype.run = function () {
@@ -114,7 +116,14 @@ var Vue = (function (exports) {
         }
     }
     function triggerEffect(effect) {
-        effect.run();
+        // 如果存在调度器，则调用调度器
+        if (effect.scheduler) {
+            effect.scheduler();
+        }
+        else {
+            // 否则直接执行副作用函数
+            effect.run();
+        }
     }
 
     function createGetter() {
@@ -153,6 +162,10 @@ var Vue = (function (exports) {
             return false;
         }
         return true;
+    }
+    // 判断是否为函数
+    function isFunction(value) {
+        return typeof value === 'function';
     }
 
     // reactiveMap 就是 proxyMap，是一个 WeakMap，
@@ -251,6 +264,56 @@ var Vue = (function (exports) {
         }
     }
 
+    function computed(getterOrOptions) {
+        // getterOrOptions 是一个函数或者一个配置对象
+        var getter;
+        var onlyGetter = isFunction(getterOrOptions);
+        // 如果只传入了 getter 函数，则将 getter 赋值给 getter
+        if (onlyGetter) {
+            getter = getterOrOptions;
+        }
+        var cRef = new ComputedRefImpl(getter);
+        return cRef;
+    }
+    var ComputedRefImpl = /** @class */ (function () {
+        function ComputedRefImpl(getter) {
+            var _this = this;
+            // 脏值检测，_dirty 是一个标识，用于判断是否需要重新计算
+            this._dirty = true;
+            // dep 是一个 Set 集合，用于存储副作用函数
+            this.dep = undefined;
+            this.__v_isRef = true;
+            this.effect = new ReactiveEffect(getter, function () {
+                // 这就是调度器函数 scheduler
+                if (_this._dirty === false) {
+                    // 如果 _dirty 为 false，则将 _dirty 赋值为 true
+                    _this._dirty = true;
+                    // 再触发依赖
+                    triggerRefValue(_this);
+                }
+            });
+            this.effect.computed = this;
+        }
+        Object.defineProperty(ComputedRefImpl.prototype, "value", {
+            // 访问 computed 的值时，会执行这个 get 标记对应的回调
+            get: function () {
+                // 收集依赖
+                trackRefValue(this);
+                // 如果 _dirty 为 true，则执行 effect.run() 方法，重新计算 computed 的值
+                if (this._dirty) {
+                    this._dirty = false;
+                    // 执行副作用函数, 并将返回值赋值给 _value
+                    this._value = this.effect.run();
+                }
+                return this._value;
+            },
+            enumerable: false,
+            configurable: true
+        });
+        return ComputedRefImpl;
+    }());
+
+    exports.computed = computed;
     exports.effect = effect;
     exports.reactive = reactive;
     exports.ref = ref;

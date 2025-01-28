@@ -1,4 +1,7 @@
 import { Dep, createDep } from './deps';
+import { ComputedRefImpl } from './computed';
+
+export type EffectScheduler = (...args: any[]) => any;
 
 // 接收函数，并注册为副作用函数
 export function effect<T = any>(fn: () => T) {
@@ -12,9 +15,11 @@ export function effect<T = any>(fn: () => T) {
 export let activeEffect: ReactiveEffect | undefined;
 
 export class ReactiveEffect<T = any> {
-  constructor(public fn: () => T) {
+  constructor(public fn: () => T, public scheduler: EffectScheduler | null = null) {
     //
   }
+
+  computed?: ComputedRefImpl<T>;
 
   run() {
     // 执行副作用函数
@@ -84,5 +89,11 @@ export function triggerEffects(dep: Dep) {
 }
 
 export function triggerEffect(effect: ReactiveEffect) {
-  effect.run();
+  // 如果存在调度器，则调用调度器
+  if (effect.scheduler) {
+    effect.scheduler();
+  } else {
+    // 否则直接执行副作用函数
+    effect.run();
+  }
 }

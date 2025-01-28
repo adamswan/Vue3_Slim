@@ -17,3 +17,8 @@ export function hasChanged(value: any, oldValue: any): boolean {
   }
   return true;
 }
+
+// 判断是否为函数
+export function isFunction(value: unknown): value is Function {
+  return typeof value === 'function';
+}
