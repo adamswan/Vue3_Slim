@@ -1,4 +1,5 @@
 import { mutableHandlers } from './baseHandlers';
+import { isObject } from '@vue/shared';
 
 // reactiveMap 就是 proxyMap，是一个 WeakMap，
 // 它的键是原始对象，值是代理对象
@@ -28,4 +29,14 @@ function createReactiveObject(
   proxyMap.set(target, proxy);
 
   return proxy;
+}
+
+// 判断是否为引用类型
+// 如果是，则交给 reactive 处理
+// 如果不是，则直接返回
+export function toReactive<T extends unknown>(value: T): T {
+  if (isObject(value)) {
+    return reactive(value as object);
+  }
+  return value;
 }

@@ -140,6 +140,14 @@ var Vue = (function (exports) {
         set: set
     };
 
+    // 判断是否为引用类型
+    function isObject(value) {
+        if (value !== null && typeof value === 'object') {
+            return true;
+        }
+        return false;
+    }
+
     // reactiveMap 就是 proxyMap，是一个 WeakMap，
     // 它的键是原始对象，值是代理对象
     // 作用：防止用户重复代理同一个对象
@@ -162,9 +170,71 @@ var Vue = (function (exports) {
         proxyMap.set(target, proxy);
         return proxy;
     }
+    // 判断是否为引用类型
+    // 如果是，则交给 reactive 处理
+    // 如果不是，则直接返回
+    function toReactive(value) {
+        if (isObject(value)) {
+            return reactive(value);
+        }
+        return value;
+    }
+
+    function ref(value) {
+        return createRef(value, false);
+    }
+    function createRef(rawValue, shallow) {
+        // 如果已经是 ref 类型，则直接返回
+        if (isRef(rawValue)) {
+            return rawValue;
+        }
+        return new RefImpl(rawValue, shallow);
+    }
+    var RefImpl = /** @class */ (function () {
+        // 经过判断后，将 value 赋值给 _value
+        function RefImpl(value, __v_isShallow) {
+            this.__v_isShallow = __v_isShallow;
+            // dep 是一个 Set 集合，用于存储副作用函数
+            this.dep = undefined;
+            // __v_isRef 是一个标识，用于判断是否为 ref 对象
+            this.__v_isRef = true;
+            this._value = __v_isShallow ? value : toReactive(value);
+        }
+        Object.defineProperty(RefImpl.prototype, "value", {
+            // 在 get 对应的回调中收集依赖、并返回 _value
+            get: function () {
+                trackRefValue(this);
+                return this._value;
+            },
+            // 在 set 对应的回调中设定新value，并触发依赖
+            set: function (newVal) {
+                // 在 set 中触发依赖
+                this._value = newVal;
+            },
+            enumerable: false,
+            configurable: true
+        });
+        return RefImpl;
+    }());
+    // 收集依赖
+    function trackRefValue(ref) {
+        if (activeEffect) {
+            trackEffects(ref.dep || (ref.dep = createDep()));
+        }
+    }
+    // 判断是否为 ref 对象
+    function isRef(r) {
+        if (r && r.__v_isRef === true) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
 
     exports.effect = effect;
     exports.reactive = reactive;
+    exports.ref = ref;
 
     Object.defineProperty(exports, '__esModule', { value: true });
 
