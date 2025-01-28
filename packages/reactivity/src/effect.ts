@@ -1,5 +1,6 @@
 import { Dep, createDep } from './deps';
 import { ComputedRefImpl } from './computed';
+import { extend } from '@vue/shared';
 
 export type EffectScheduler = (...args: any[]) => any;
 
@@ -12,8 +13,15 @@ export interface ReactiveEffectOptions {
 export function effect<T = any>(fn: () => T, options?: ReactiveEffectOptions) {
   const _effect = new ReactiveEffect(fn);
 
+  // _effect 本身是含有副作用函数的对象，如果传入了 options，
+  // 且 options 中有调度器函数的话，就能让_effect也具备调度器函数
+  // 这样就可以在 triggerEffect() 函数中触发调度器函数，而不直接执行副作用函数
+  if (options) {
+    extend(_effect, options);
+  }
+
   // 如果开启了 lazy，则不立即执行副作用函数
-  if (options === undefined || options.lazy === false) {
+  if (!options || !options.lazy) {
     _effect.run();
   }
 }
@@ -32,6 +40,10 @@ export class ReactiveEffect<T = any> {
     // 执行副作用函数
     activeEffect = this;
     return this.fn();
+  }
+
+  stop() {
+    // 停止侦听，将来实现
   }
 }
 
@@ -62,7 +74,7 @@ export function track(target: object, key: unknown) {
 
   trackEffects(dep);
 
-  console.log('targetMap', targetMap);
+  // console.log('targetMap', targetMap);
 }
 
 // 同一个属性的副作用函数都收集到一个 Set 中

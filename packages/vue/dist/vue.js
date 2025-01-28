@@ -49,11 +49,43 @@ var Vue = (function (exports) {
         return dep;
     };
 
+    // 判断是否为引用类型
+    function isObject(value) {
+        if (value !== null && typeof value === 'object') {
+            return true;
+        }
+        return false;
+    }
+    // 判断值前后是否发生变化
+    function hasChanged(value, oldValue) {
+        if (Object.is(value, oldValue)) {
+            return false;
+        }
+        return true;
+    }
+    // 判断是否为函数
+    function isFunction(value) {
+        return typeof value === 'function';
+    }
+    // 合并两个对象
+    function extend(a, b) {
+        return Object.assign(a, b);
+    }
+    // export const extend = Object.assign;
+    // 空对象
+    var EMPTY_OBJ = {};
+
     // 接收函数，并注册为副作用函数
     function effect(fn, options) {
         var _effect = new ReactiveEffect(fn);
+        // _effect 本身是含有副作用函数的对象，如果传入了 options，
+        // 且 options 中有调度器函数的话，就能让_effect也具备调度器函数
+        // 这样就可以在 triggerEffect() 函数中触发调度器函数，而不直接执行副作用函数
+        if (options) {
+            extend(_effect, options);
+        }
         // 如果开启了 lazy，则不立即执行副作用函数
-        if (options === undefined || options.lazy === false) {
+        if (!options || !options.lazy) {
             _effect.run();
         }
     }
@@ -70,6 +102,9 @@ var Vue = (function (exports) {
             // 执行副作用函数
             activeEffect = this;
             return this.fn();
+        };
+        ReactiveEffect.prototype.stop = function () {
+            // 停止侦听，将来实现
         };
         return ReactiveEffect;
     }());
@@ -92,7 +127,7 @@ var Vue = (function (exports) {
             depsMap.set(key, dep);
         }
         trackEffects(dep);
-        console.log('targetMap', targetMap);
+        // console.log('targetMap', targetMap);
     }
     // 同一个属性的副作用函数都收集到一个 Set 中
     function trackEffects(dep) {
@@ -161,25 +196,6 @@ var Vue = (function (exports) {
         set: set
     };
 
-    // 判断是否为引用类型
-    function isObject(value) {
-        if (value !== null && typeof value === 'object') {
-            return true;
-        }
-        return false;
-    }
-    // 判断值前后是否发生变化
-    function hasChanged(value, oldValue) {
-        if (Object.is(value, oldValue)) {
-            return false;
-        }
-        return true;
-    }
-    // 判断是否为函数
-    function isFunction(value) {
-        return typeof value === 'function';
-    }
-
     // reactiveMap 就是 proxyMap，是一个 WeakMap，
     // 它的键是原始对象，值是代理对象
     // 作用：防止用户重复代理同一个对象
@@ -199,6 +215,8 @@ var Vue = (function (exports) {
         }
         // 否则，创建代理对象，并将其存储到 proxyMap 中
         var proxy = new Proxy(target, baseHandlers);
+        // 添加标识，表示这是一个 reactive 对象
+        proxy["__v_isReactive" /* ReactiveFlags.IS_REACTIVE */] = true;
         proxyMap.set(target, proxy);
         return proxy;
     }
@@ -210,6 +228,10 @@ var Vue = (function (exports) {
             return reactive(value);
         }
         return value;
+    }
+    // 判断是否为 reactive 对象
+    function isReactive(value) {
+        return !!(value && value["__v_isReactive" /* ReactiveFlags.IS_REACTIVE */]);
     }
 
     function ref(value) {
@@ -325,10 +347,120 @@ var Vue = (function (exports) {
         return ComputedRefImpl;
     }());
 
+    // pendingPreFlushCbs 是一个数组，用于存储需要在 preFlush 阶段执行的回调函数
+    var pendingPreFlushCbs = [];
+    // isFlushPending 是一个开关，用于表示是否有刷新任务正在等待执行
+    var isFlushPending = false;
+    // resolvedPromise 是一个已成功的 Promise 对象，用于生成微任务队列
+    var resolvedPromise = Promise.resolve();
+    function queuePreFlushCb(cb) {
+        queueCb(cb, pendingPreFlushCbs);
+    }
+    function queueCb(cb, pendingQueue) {
+        // 将回调函数添加到 pendingQueue 数组中
+        pendingQueue.push(cb);
+        queueFlush();
+    }
+    function queueFlush() {
+        // 如果当前没有刷新任务正在等待执行，则调用 flushJobs 函数执行刷新任务
+        if (!isFlushPending) {
+            isFlushPending = true;
+            resolvedPromise.then(flushJobs);
+        }
+    }
+    function flushJobs() {
+        isFlushPending = false;
+        // 执行 pendingPreFlushCbs 数组中的回调函数
+        flushPreFlushCbs();
+    }
+    function flushPreFlushCbs() {
+        if (pendingPreFlushCbs.length) {
+            var activePreFlushCbs = __spreadArray([], __read(new Set(pendingPreFlushCbs)), false);
+            pendingPreFlushCbs.length = 0;
+            for (var i = 0; i < activePreFlushCbs.length; i++) {
+                activePreFlushCbs[i]();
+            }
+        }
+    }
+
+    function watch(source, cb, options) {
+        return doWatch(source, cb, options);
+    }
+    function doWatch(source, cb, _a) {
+        var _b = _a === void 0 ? EMPTY_OBJ : _a, immediate = _b.immediate, deep = _b.deep;
+        var getter;
+        if (isReactive(source)) {
+            getter = function () {
+                return source;
+            };
+            // 引用类型，默认开启深度监听
+            deep = true;
+        }
+        else {
+            getter = function () { };
+        }
+        // 如果监听的是对象，那么上面直接将 deep 设置为了true，
+        // 所以这里的 baseGetter 其实就是 source，
+        // 所以需要用 traverse 递归 source ，访问所有属性，完成依赖收集
+        if (cb && deep) {
+            var baseGetter_1 = getter; // 浅拷贝
+            getter = function () { return traverse(baseGetter_1()); };
+        }
+        // 旧值
+        var oldValue = {};
+        // 重要的 job 函数
+        var job = function () {
+            if (cb) {
+                // 求新值
+                var newValue = effect.run();
+                // 对比新值与旧值
+                if (deep || hasChanged(newValue, oldValue)) {
+                    // 执行传入 watch 的回调
+                    cb(newValue, oldValue);
+                    // 更新旧值
+                    oldValue = newValue;
+                }
+            }
+        };
+        // 调度器函数
+        var scheduler = function () {
+            return queuePreFlushCb(job);
+        };
+        var effect = new ReactiveEffect(getter, scheduler);
+        if (cb) {
+            if (immediate) {
+                job();
+            }
+            else {
+                // 求旧值
+                oldValue = effect.run();
+            }
+        }
+        else {
+            effect.run();
+        }
+        return function () {
+            // 停止侦听
+            effect.stop();
+        };
+    }
+    // 递归value 实现依赖收集
+    function traverse(value) {
+        if (!isObject(value)) {
+            return value;
+        }
+        for (var key in value) {
+            traverse(value[key]);
+        }
+        return value;
+    }
+
     exports.computed = computed;
     exports.effect = effect;
+    exports.queuePreFlushCb = queuePreFlushCb;
     exports.reactive = reactive;
     exports.ref = ref;
+    exports.watch = watch;
 
     Object.defineProperty(exports, '__esModule', { value: true });
 

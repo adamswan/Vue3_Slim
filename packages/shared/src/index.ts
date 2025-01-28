@@ -22,3 +22,12 @@ export function hasChanged(value: any, oldValue: any): boolean {
 export function isFunction(value: unknown): value is Function {
   return typeof value === 'function';
 }
+
+// 合并两个对象
+export function extend(a: object, b: object) {
+  return Object.assign(a, b);
+}
+// export const extend = Object.assign;
+
+// 空对象
+export const EMPTY_OBJ: { readonly [key: string]: any } = {};
