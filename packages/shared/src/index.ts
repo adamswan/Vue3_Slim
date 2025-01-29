@@ -31,3 +31,13 @@ export function extend(a: object, b: object) {
 
 // 空对象
 export const EMPTY_OBJ: { readonly [key: string]: any } = {};
+
+// 判断是否为一个数组
+export function isArray(value: unknown): value is Array<any> {
+  return Array.isArray(value);
+}
+
+// 判断是否为一个 string
+export function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
