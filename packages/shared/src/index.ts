@@ -41,3 +41,10 @@ export function isArray(value: unknown): value is Array<any> {
 export function isString(value: unknown): value is string {
   return typeof value === 'string';
 }
+
+// 是否 on 开头
+const onRE = /^on[^a-z]/;
+// export const isOn = (key: string) => onRE.test(key)
+export function isOn(key: string) {
+  return onRE.test(key);
+}
