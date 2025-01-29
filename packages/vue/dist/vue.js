@@ -82,6 +82,12 @@ var Vue = (function (exports) {
     function isString(value) {
         return typeof value === 'string';
     }
+    // 是否 on 开头
+    var onRE = /^on[^a-z]/;
+    // export const isOn = (key: string) => onRE.test(key)
+    function isOn(key) {
+        return onRE.test(key);
+    }
 
     // 接收函数，并注册为副作用函数
     function effect(fn, options) {
@@ -605,6 +611,282 @@ var Vue = (function (exports) {
         }
     }
 
+    function createRenderer(options) {
+        return baseCreateRenderer(options);
+    }
+    // 创建渲染器的核心函数
+    function baseCreateRenderer(options) {
+        var hostCreateElement = options.createElement, hostSetElementText = options.setElementText, hostPatchProp = options.patchProp, hostInsert = options.insert;
+        console.log('options', options);
+        var processElement = function (oldVNode, newVNode, container, anchor) {
+            if (oldVNode === null) {
+                // 挂载
+                mountElement(newVNode, container, anchor);
+            }
+        };
+        // 用于挂载元素的函数
+        var mountElement = function (vnode, container, anchor) {
+            var type = vnode.type, props = vnode.props, shapeFlag = vnode.shapeFlag;
+            // 1. 创建元素
+            var el = (vnode.el = hostCreateElement(type));
+            if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+                // 2. 设置文本
+                hostSetElementText(el, vnode.children);
+            }
+            else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) ;
+            if (props) {
+                // 3. 设置 props
+                for (var key in props) {
+                    hostPatchProp(el, key, null, props[key]);
+                }
+            }
+            // 4. 插入
+            hostInsert(el, container, anchor);
+        };
+        // 用于比较新旧 VNode 的 patch 函数
+        var patch = function (oldVNode, newVNode, container, anchor) {
+            if (anchor === void 0) { anchor = null; }
+            if (oldVNode === newVNode) {
+                // 如果新旧 VNode 是同一个对象，则直接返回
+                return;
+            }
+            var type = newVNode.type, shapeFlag = newVNode.shapeFlag;
+            switch (type) {
+                case Text:
+                    // 如果新 VNode 的类型是文本节点，则处理文本节点的更新
+                    // processText(oldVNode, newVNode, container);
+                    break;
+                case Comment:
+                    // 如果新 VNode 的类型是注释节点，则处理注释节点的更新
+                    // processComment(oldVNode, newVNode, container);
+                    break;
+                case Fragment:
+                    // 如果新 VNode 的类型是片段节点，则处理片段节点的更新
+                    // processFragment(oldVNode, newVNode, container);
+                    break;
+                default:
+                    if (shapeFlag & ShapeFlags.ELEMENT) {
+                        // 原生 element
+                        processElement(oldVNode, newVNode, container, anchor);
+                    }
+                    else if (shapeFlag & ShapeFlags.COMPONENT) ;
+            }
+        };
+        // 用于创建 VNode 树的 render 函数
+        var render = function (vnode, container) {
+            if (vnode === null) ;
+            else {
+                // 如果 vnode 不为 null，则调用 patch 方法进行渲染
+                patch(container._vnode || null, vnode, container);
+            }
+            // 更新 _vnode ，即将新的 vnode 赋值给容器的 _vnode 属性，作为旧的 vnode，下次渲染时可以进行比较
+            container._vnode = vnode;
+        };
+        return {
+            render: render
+        };
+    }
+
+    // 浏览器端，DOM元素的增删改查操作
+    var doc = document;
+    var nodeOps = {
+        // 插入指定元素到指定位置
+        insert: function (child, parent, anchor) {
+            parent.insertBefore(child, anchor || null);
+        },
+        // 创建指定 Element
+        createElement: function (tag) {
+            var el = doc.createElement(tag);
+            return el;
+        },
+        // 为指定的 element 设置 textContent
+        setElementText: function (el, text) {
+            el.textContent = text;
+        },
+        // 删除指定元素
+        remove: function (child) {
+            var parent = child.parentNode;
+            if (parent) {
+                parent.removeChild(child);
+            }
+        },
+        // 创建 Text 节点
+        createText: function (text) { return doc.createTextNode(text); },
+        // 设置 text
+        setText: function (node, text) {
+            node.nodeValue = text;
+        },
+        // 创建 Comment 节点
+        createComment: function (text) { return doc.createComment(text); }
+    };
+
+    // 处理标签属性
+    function patchAttr(el, key, value) {
+        if (value == null) {
+            el.removeAttribute(key);
+        }
+        else {
+            el.setAttribute(key, value);
+        }
+    }
+
+    // 处理类名
+    function patchClass(el, value) {
+        if (value == null) {
+            el.removeAttribute('class');
+        }
+        else {
+            el.className = value;
+        }
+    }
+
+    // 处理事件
+    function patchEvent(el, rawName, prevValue, nextValue) {
+        // vei = vue event invokers
+        var invokers = el._vei || (el._vei = {});
+        // 是否存在缓存事件
+        var existingInvoker = invokers[rawName];
+        // 如果当前事件存在缓存，并且存在新的事件行为，则判定为更新操作。直接更新 invoker 的 value 即可
+        if (nextValue && existingInvoker) {
+            // patch
+            existingInvoker.value = nextValue;
+        }
+        else {
+            // 获取用于 addEventListener || removeEventListener 的事件名
+            var name_1 = parseName(rawName);
+            if (nextValue) {
+                // add
+                var invoker = (invokers[rawName] = createInvoker(nextValue));
+                el.addEventListener(name_1, invoker);
+            }
+            else if (existingInvoker) {
+                // remove
+                el.removeEventListener(name_1, existingInvoker);
+                // 删除缓存
+                invokers[rawName] = undefined;
+            }
+        }
+    }
+    /**
+     * 直接返回剔除 on，其余转化为小写的事件名即可
+     */
+    function parseName(name) {
+        return name.slice(2).toLowerCase();
+    }
+    /**
+     * 生成 invoker 函数
+     */
+    function createInvoker(initialValue) {
+        var invoker = function (e) {
+            invoker.value && invoker.value();
+        };
+        // value 为真实的事件行为
+        invoker.value = initialValue;
+        return invoker;
+    }
+
+    /**
+     * 通过 DOM Properties 指定属性
+     */
+    function patchDOMProp(el, key, value) {
+        try {
+            el[key] = value;
+        }
+        catch (e) { }
+    }
+
+    /**
+     * 为 style 属性进行打补丁
+     */
+    function patchStyle(el, prev, next) {
+        // 获取 style 对象
+        var style = el.style;
+        // 判断新的样式是否为纯字符串
+        var isCssString = isString(next);
+        if (next && !isCssString) {
+            // 赋值新样式
+            for (var key in next) {
+                setStyle(style, key, next[key]);
+            }
+            // 清理旧样式
+            if (prev && !isString(prev)) {
+                for (var key in prev) {
+                    if (next[key] == null) {
+                        setStyle(style, key, '');
+                    }
+                }
+            }
+        }
+    }
+    /**
+     * 赋值样式
+     */
+    function setStyle(style, name, val) {
+        style[name] = val;
+    }
+
+    // 处理标签上的各类属性：样式、事件、属性、class 等等
+    // 为 prop 进行打补丁操作
+    var patchProp = function (el, key, prevValue, nextValue) {
+        if (key === 'class') {
+            patchClass(el, nextValue);
+        }
+        else if (key === 'style') {
+            // style
+            patchStyle(el, prevValue, nextValue);
+        }
+        else if (isOn(key)) {
+            // 事件
+            patchEvent(el, key, prevValue, nextValue);
+        }
+        else if (shouldSetAsProp(el, key)) {
+            // 通过 DOM Properties 指定
+            patchDOMProp(el, key, nextValue);
+        }
+        else {
+            // 其他属性
+            patchAttr(el, key, nextValue);
+        }
+    };
+    // 判断指定元素的指定属性是否可以通过 DOM Properties 指定
+    function shouldSetAsProp(el, key) {
+        // 各种边缘情况处理
+        if (key === 'spellcheck' || key === 'draggable' || key === 'translate') {
+            return false;
+        }
+        // #1787, #2840 表单元素的表单属性是只读的，必须设置为属性 attribute
+        if (key === 'form') {
+            return false;
+        }
+        // #1526 <input list> 必须设置为属性 attribute
+        if (key === 'list' && el.tagName === 'INPUT') {
+            return false;
+        }
+        // #2766 <textarea type> 必须设置为属性 attribute
+        if (key === 'type' && el.tagName === 'TEXTAREA') {
+            return false;
+        }
+        return key in el;
+    }
+
+    // 渲染器的配置项
+    var rendererOptions = extend({ patchProp: patchProp }, nodeOps);
+    // 临时变量，存储渲染器
+    var renderer;
+    function ensureRenderer() {
+        return renderer || (renderer = createRenderer(rendererOptions));
+    }
+    // 调用 ensureRenderer，拿到大对象，再调用内部的 render 方法
+    // 最后将一连串调用合并为一个render向外暴露
+    var render = function () {
+        var _a;
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
+        }
+        (_a = ensureRenderer()).render.apply(_a, __spreadArray([], __read(args), false));
+    };
+
     exports.Comment = Comment;
     exports.Fragment = Fragment;
     exports.Text = Text;
@@ -614,6 +896,7 @@ var Vue = (function (exports) {
     exports.queuePreFlushCb = queuePreFlushCb;
     exports.reactive = reactive;
     exports.ref = ref;
+    exports.render = render;
     exports.watch = watch;
 
     Object.defineProperty(exports, '__esModule', { value: true });

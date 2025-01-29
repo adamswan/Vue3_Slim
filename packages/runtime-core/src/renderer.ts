@@ -13,9 +13,23 @@ export interface RendererOptions {
 
   // 插入元素
   insert: (el: Element, parent: Element, anchor?: Element | null) => void;
+
+  patchProp(el: Element, key: string, prevValue: any, nextValue: any): void;
+
+  // 卸载指定dom
+  remove(el): void;
+
+  // 创建 Text 节点
+  createText(text: string);
+
+  //设置 text
+  setText(node, text): void;
+
+  //设置 text
+  createComment(text: string);
 }
 
-export function crateRenderer(options: RendererOptions) {
+export function createRenderer(options: RendererOptions) {
   return baseCreateRenderer(options);
 }
 
@@ -24,9 +38,11 @@ function baseCreateRenderer(options: RendererOptions): any {
   const {
     createElement: hostCreateElement,
     setElementText: hostSetElementText,
-    pathProp: hostPatchProp,
+    patchProp: hostPatchProp,
     insert: hostInsert
   } = options;
+
+  console.log('options', options);
 
   const processElement = (oldVNode, newVNode, container, anchor) => {
     if (oldVNode === null) {
