@@ -463,6 +463,37 @@ var Vue = (function (exports) {
         return value;
     }
 
+    // 规范化 class 类，处理 class 的增强
+    function normalizeClass(value) {
+        var res = '';
+        // 判断是否为 string，如果是 string 就不需要专门处理
+        if (isString(value)) {
+            res = value;
+        }
+        // 额外的数组增强。官方案例：https://cn.vuejs.org/guide/essentials/class-and-style.html#binding-to-arrays
+        else if (isArray(value)) {
+            // 循环得到数组中的每个元素，通过 normalizeClass 方法进行迭代处理
+            for (var i = 0; i < value.length; i++) {
+                var normalized = normalizeClass(value[i]);
+                if (normalized) {
+                    res += normalized + ' ';
+                }
+            }
+        }
+        // 额外的对象增强。官方案例：https://cn.vuejs.org/guide/essentials/class-and-style.html#binding-html-classes
+        else if (isObject(value)) {
+            // for in 获取到所有的 key，这里的 key（name） 即为 类名。value 为 boolean 值
+            for (var name_1 in value) {
+                // 把 value 当做 boolean 来看，拼接 name
+                if (value[name_1]) {
+                    res += name_1 + ' ';
+                }
+            }
+        }
+        // 去左右空格
+        return res.trim();
+    }
+
     var ShapeFlags;
     (function (ShapeFlags) {
         ShapeFlags[ShapeFlags["ELEMENT"] = 1] = "ELEMENT";
@@ -478,6 +509,9 @@ var Vue = (function (exports) {
         ShapeFlags[ShapeFlags["COMPONENT"] = 6] = "COMPONENT";
     })(ShapeFlags || (ShapeFlags = {}));
 
+    var Fragment = Symbol('Fragment');
+    var Text = Symbol('Text');
+    var Comment = Symbol('Comment');
     // 判断是否为 vnode
     function isVNode(value) {
         return value ? value.__v_isVNode === true : false;
@@ -487,12 +521,17 @@ var Vue = (function (exports) {
         // 通过 bit 位处理 shapeFlag 类型
         var shapeFlag = isString(type)
             ? ShapeFlags.ELEMENT
-            : isObject(type)
+            : isObject(type) // 如果是对象，那么就是一个.vue组件
                 ? ShapeFlags.STATEFUL_COMPONENT
                 : 0;
         if (props) {
-            // 处理 class
-            props.class; props.style;
+            // 对样式class进行增强处理
+            // 解构出 class 和 style属性，并将 class 重命名为 klass
+            var klass = props.class; props.style;
+            if (klass && !isString(klass)) {
+                // 格式化类名后再设置为vnode节点的class属性，这样就给盒子添加上了class属性
+                props.class = normalizeClass(klass);
+            }
         }
         return createBaseVNode(type, props, children, shapeFlag);
     }
@@ -566,6 +605,9 @@ var Vue = (function (exports) {
         }
     }
 
+    exports.Comment = Comment;
+    exports.Fragment = Fragment;
+    exports.Text = Text;
     exports.computed = computed;
     exports.effect = effect;
     exports.h = h;

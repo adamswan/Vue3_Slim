@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script src="../../dist/vue.js"></script>
+    <script>
+      const { h } = Vue;
+
+      // class的三种写法
+      // 1.字符串
+      const vnode1 = h('div', {
+        class: 'red'
+      });
+      console.log(vnode1);
+
+      // 2.对象
+      const vnode2 = h('div', {
+        class: {
+          box2: true,
+          box3: false,
+          box4: true
+        }
+      });
+      console.log(vnode2);
+
+      // 3.数组
+      const vnode3 = h('div', {
+        class: [
+          {
+            box5: true
+          }
+        ]
+      });
+      console.log(vnode3);
+    </script>
+  </body>
+</html>

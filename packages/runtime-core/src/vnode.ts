@@ -1,5 +1,5 @@
 import { isArray, isFunction, isObject, isString } from '@vue/shared';
-// import { normalizeClass } from 'packages/shared/src/normalizeProp';
+import { normalizeClass } from 'packages/shared/src/normalizeProp';
 import { ShapeFlags } from 'packages/shared/src/shapeFlags';
 
 export const Fragment = Symbol('Fragment');
@@ -26,15 +26,17 @@ export function createVNode(type, props, children?): VNode {
   // 通过 bit 位处理 shapeFlag 类型
   const shapeFlag = isString(type)
     ? ShapeFlags.ELEMENT
-    : isObject(type)
+    : isObject(type) // 如果是对象，那么就是一个.vue组件
     ? ShapeFlags.STATEFUL_COMPONENT
     : 0;
 
   if (props) {
-    // 处理 class
+    // 对样式class进行增强处理
+    // 解构出 class 和 style属性，并将 class 重命名为 klass
     let { class: klass, style } = props;
     if (klass && !isString(klass)) {
-      //   props.class = normalizeClass(klass);
+      // 格式化类名后再设置为vnode节点的class属性，这样就给盒子添加上了class属性
+      props.class = normalizeClass(klass);
     }
   }
 
