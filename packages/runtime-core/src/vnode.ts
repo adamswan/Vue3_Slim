@@ -6,7 +6,7 @@ export const Fragment = Symbol('Fragment');
 export const Text = Symbol('Text');
 export const Comment = Symbol('Comment');
 
-// VNode 对象属性只选取最重要的几个
+// VNode 对象，属性只选取最重要的几个
 export interface VNode {
   __v_isVNode: true; // 标识是否为 vnode
   key: any;

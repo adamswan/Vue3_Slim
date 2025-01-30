@@ -7,19 +7,19 @@ export const nodeOps = {
     parent.insertBefore(child, anchor || null);
   },
 
-  // 创建指定 Element
+  // 创建指定DOM
   createElement: (tag): Element => {
     const el = doc.createElement(tag);
 
     return el;
   },
 
-  // 为指定的 element 设置 textContent
+  // 为指定的 DOM 设置文本内容
   setElementText: (el, text) => {
     el.textContent = text;
   },
 
-  // 删除指定元素
+  // 删除指定DOM
   remove: child => {
     const parent = child.parentNode;
     if (parent) {

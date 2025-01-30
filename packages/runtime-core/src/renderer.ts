@@ -1,6 +1,7 @@
 import { EMPTY_OBJ } from '@vue/shared';
 import { Text, Comment, Fragment } from './vnode';
 import { ShapeFlags } from 'packages/shared/src/shapeFlags';
+import { isSameVNodeType } from './vnode';
 
 export interface RendererOptions {
   // 创建元素
@@ -42,7 +43,8 @@ function baseCreateRenderer(options: RendererOptions): any {
     createElement: hostCreateElement,
     setElementText: hostSetElementText,
     patchProp: hostPatchProp,
-    insert: hostInsert
+    insert: hostInsert,
+    remove: hostRemove
   } = options;
 
   console.log('options执行', options);
@@ -178,6 +180,14 @@ function baseCreateRenderer(options: RendererOptions): any {
       return;
     }
 
+    // 如果新旧 VNode 类型不同，则卸载旧 VNode，并挂载新 VNode
+    if (oldVNode && !isSameVNodeType(oldVNode, newVNode)) {
+      // 如果新旧 VNode 不是同一个对象，且旧 VNode 存在，则卸载旧 VNode
+      unmount(oldVNode);
+      // 置空旧 VNode , 进而触发新 VNode 的挂载操作
+      oldVNode = null;
+    }
+
     const { type, shapeFlag } = newVNode;
 
     switch (type) {
@@ -216,6 +226,11 @@ function baseCreateRenderer(options: RendererOptions): any {
 
     // 更新 _vnode ，即将新的 vnode 赋值给容器的 _vnode 属性，作为旧的 vnode，下次渲染时可以进行比较
     container._vnode = vnode;
+  };
+
+  // 卸载指定dom
+  const unmount = vnode => {
+    hostRemove(vnode.el!);
   };
 
   return {

@@ -576,6 +576,10 @@ var Vue = (function (exports) {
         // 按位或赋值
         vnode.shapeFlag |= type;
     }
+    // 根据 key 和 type 判断是否为相同类型节点
+    function isSameVNodeType(n1, n2) {
+        return n1.type === n2.type && n1.key === n2.key;
+    }
 
     function h(type, propsOrChildren, children) {
         // 获取用户传递的参数数量
@@ -618,7 +622,7 @@ var Vue = (function (exports) {
     function baseCreateRenderer(options) {
         // 从渲染配置对象 options 中解构出需要的函数
         // 需要跨平台渲染，故重命名为host开头
-        var hostCreateElement = options.createElement, hostSetElementText = options.setElementText, hostPatchProp = options.patchProp, hostInsert = options.insert;
+        var hostCreateElement = options.createElement, hostSetElementText = options.setElementText, hostPatchProp = options.patchProp, hostInsert = options.insert, hostRemove = options.remove;
         console.log('options执行', options);
         var processElement = function (oldVNode, newVNode, container, anchor) {
             if (oldVNode === null) {
@@ -728,6 +732,13 @@ var Vue = (function (exports) {
                 // 如果新旧 VNode 是同一个对象，则直接返回
                 return;
             }
+            // 如果新旧 VNode 类型不同，则卸载旧 VNode，并挂载新 VNode
+            if (oldVNode && !isSameVNodeType(oldVNode, newVNode)) {
+                // 如果新旧 VNode 不是同一个对象，且旧 VNode 存在，则卸载旧 VNode
+                unmount(oldVNode);
+                // 置空旧 VNode , 进而触发新 VNode 的挂载操作
+                oldVNode = null;
+            }
             var type = newVNode.type, shapeFlag = newVNode.shapeFlag;
             switch (type) {
                 case Text:
@@ -760,6 +771,10 @@ var Vue = (function (exports) {
             // 更新 _vnode ，即将新的 vnode 赋值给容器的 _vnode 属性，作为旧的 vnode，下次渲染时可以进行比较
             container._vnode = vnode;
         };
+        // 卸载指定dom
+        var unmount = function (vnode) {
+            hostRemove(vnode.el);
+        };
         return {
             render: render
         };
@@ -772,16 +787,16 @@ var Vue = (function (exports) {
         insert: function (child, parent, anchor) {
             parent.insertBefore(child, anchor || null);
         },
-        // 创建指定 Element
+        // 创建指定DOM
         createElement: function (tag) {
             var el = doc.createElement(tag);
             return el;
         },
-        // 为指定的 element 设置 textContent
+        // 为指定的 DOM 设置文本内容
         setElementText: function (el, text) {
             el.textContent = text;
         },
-        // 删除指定元素
+        // 删除指定DOM
         remove: function (child) {
             var parent = child.parentNode;
             if (parent) {
