@@ -44,11 +44,15 @@ function baseCreateRenderer(options: RendererOptions): any {
     setElementText: hostSetElementText,
     patchProp: hostPatchProp,
     insert: hostInsert,
-    remove: hostRemove
+    remove: hostRemove,
+    createText: hostCreateText,
+    setText: hostSetText,
+    createComment: hostCreateComment
   } = options;
 
   console.log('options执行', options);
 
+  // 处理原生DOM元素节点
   const processElement = (oldVNode, newVNode, container, anchor) => {
     if (oldVNode === null) {
       console.log('挂载');
@@ -58,6 +62,39 @@ function baseCreateRenderer(options: RendererOptions): any {
       console.log('更新');
       // 更新
       patchElement(oldVNode, newVNode);
+    }
+  };
+
+  // 处理文本节点
+  const processText = (oldVNode, newVNode, container, anchor) => {
+    // 不存在旧的节点，则为 挂载 操作
+    if (oldVNode == null) {
+      // 生成节点
+      newVNode.el = hostCreateText(newVNode.children as string);
+      // 挂载 使用不同平台的原生方法
+      hostInsert(newVNode.el, container, anchor);
+    }
+    // 存在旧的节点，则为 更新 操作
+    else {
+      const el = (newVNode.el = oldVNode.el!);
+      // 新旧节点的文本不同，则更新文本
+      if (newVNode.children !== oldVNode.children) {
+        // 更新 使用不同平台的原生方法
+        hostSetText(el, newVNode.children as string);
+      }
+    }
+  };
+
+  // 处理注释节点（无需响应式）
+  const processCommentNode = (oldVNode, newVNode, container, anchor) => {
+    if (oldVNode == null) {
+      // 生成节点
+      newVNode.el = hostCreateComment((newVNode.children as string) || '');
+      // 挂载
+      hostInsert(newVNode.el, container, anchor);
+    } else {
+      // 无更新
+      newVNode.el = oldVNode.el;
     }
   };
 
@@ -193,11 +230,11 @@ function baseCreateRenderer(options: RendererOptions): any {
     switch (type) {
       case Text:
         // 如果新 VNode 的类型是文本节点，则处理文本节点的更新
-        // processText(oldVNode, newVNode, container);
+        processText(oldVNode, newVNode, container, anchor);
         break;
       case Comment:
         // 如果新 VNode 的类型是注释节点，则处理注释节点的更新
-        // processComment(oldVNode, newVNode, container);
+        processCommentNode(oldVNode, newVNode, container, anchor);
         break;
 
       case Fragment:

@@ -622,8 +622,9 @@ var Vue = (function (exports) {
     function baseCreateRenderer(options) {
         // 从渲染配置对象 options 中解构出需要的函数
         // 需要跨平台渲染，故重命名为host开头
-        var hostCreateElement = options.createElement, hostSetElementText = options.setElementText, hostPatchProp = options.patchProp, hostInsert = options.insert, hostRemove = options.remove;
+        var hostCreateElement = options.createElement, hostSetElementText = options.setElementText, hostPatchProp = options.patchProp, hostInsert = options.insert, hostRemove = options.remove, hostCreateText = options.createText, hostSetText = options.setText, hostCreateComment = options.createComment;
         console.log('options执行', options);
+        // 处理原生DOM元素节点
         var processElement = function (oldVNode, newVNode, container, anchor) {
             if (oldVNode === null) {
                 console.log('挂载');
@@ -634,6 +635,38 @@ var Vue = (function (exports) {
                 console.log('更新');
                 // 更新
                 patchElement(oldVNode, newVNode);
+            }
+        };
+        // 处理文本节点
+        var processText = function (oldVNode, newVNode, container, anchor) {
+            // 不存在旧的节点，则为 挂载 操作
+            if (oldVNode == null) {
+                // 生成节点
+                newVNode.el = hostCreateText(newVNode.children);
+                // 挂载 使用不同平台的原生方法
+                hostInsert(newVNode.el, container, anchor);
+            }
+            // 存在旧的节点，则为 更新 操作
+            else {
+                var el = (newVNode.el = oldVNode.el);
+                // 新旧节点的文本不同，则更新文本
+                if (newVNode.children !== oldVNode.children) {
+                    // 更新 使用不同平台的原生方法
+                    hostSetText(el, newVNode.children);
+                }
+            }
+        };
+        // 处理注释节点（无需响应式）
+        var processCommentNode = function (oldVNode, newVNode, container, anchor) {
+            if (oldVNode == null) {
+                // 生成节点
+                newVNode.el = hostCreateComment(newVNode.children || '');
+                // 挂载
+                hostInsert(newVNode.el, container, anchor);
+            }
+            else {
+                // 无更新
+                newVNode.el = oldVNode.el;
             }
         };
         // 用于挂载元素的函数
@@ -743,11 +776,11 @@ var Vue = (function (exports) {
             switch (type) {
                 case Text:
                     // 如果新 VNode 的类型是文本节点，则处理文本节点的更新
-                    // processText(oldVNode, newVNode, container);
+                    processText(oldVNode, newVNode, container, anchor);
                     break;
                 case Comment:
                     // 如果新 VNode 的类型是注释节点，则处理注释节点的更新
-                    // processComment(oldVNode, newVNode, container);
+                    processCommentNode(oldVNode, newVNode, container, anchor);
                     break;
                 case Fragment:
                     // 如果新 VNode 的类型是片段节点，则处理片段节点的更新
