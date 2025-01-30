@@ -865,15 +865,11 @@ var Vue = (function (exports) {
             }
         }
     }
-    /**
-     * 直接返回剔除 on，其余转化为小写的事件名即可
-     */
+    // 直接返回剔除 on，其余转化为小写的事件名即可
     function parseName(name) {
         return name.slice(2).toLowerCase();
     }
-    /**
-     * 生成 invoker 函数
-     */
+    //  生成 invoker 函数
     function createInvoker(initialValue) {
         var invoker = function (e) {
             invoker.value && invoker.value();
