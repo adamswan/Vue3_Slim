@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <script>
+      const f1 = () => {
+        f2();
+        f3();
+        console.log(num1);
+        console.log(obj);
+      };
+
+      // f2会提升
+      const f2 = () => {
+        console.log('高圆圆');
+      };
+
+      // f3会提升
+      function f3() {
+        console.log('刘亦菲');
+      }
+
+      f1();
+
+      // 但是num1、obj不会提升
+      const num1 = 100;
+      const obj = {
+        name: 'why',
+        age: 18
+      };
+    </script>
+  </body>
+</html>

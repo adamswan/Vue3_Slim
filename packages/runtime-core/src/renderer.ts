@@ -1,3 +1,4 @@
+import { EMPTY_OBJ } from '@vue/shared';
 import { Text, Comment, Fragment } from './vnode';
 import { ShapeFlags } from 'packages/shared/src/shapeFlags';
 
@@ -35,6 +36,8 @@ export function createRenderer(options: RendererOptions) {
 
 // 创建渲染器的核心函数
 function baseCreateRenderer(options: RendererOptions): any {
+  // 从渲染配置对象 options 中解构出需要的函数
+  // 需要跨平台渲染，故重命名为host开头
   const {
     createElement: hostCreateElement,
     setElementText: hostSetElementText,
@@ -42,14 +45,17 @@ function baseCreateRenderer(options: RendererOptions): any {
     insert: hostInsert
   } = options;
 
-  console.log('options', options);
+  console.log('options执行', options);
 
   const processElement = (oldVNode, newVNode, container, anchor) => {
     if (oldVNode === null) {
+      console.log('挂载');
       // 挂载
       mountElement(newVNode, container, anchor);
     } else {
+      console.log('更新');
       // 更新
+      patchElement(oldVNode, newVNode);
     }
   };
 
@@ -76,6 +82,93 @@ function baseCreateRenderer(options: RendererOptions): any {
 
     // 4. 插入
     hostInsert(el, container, anchor);
+  };
+
+  // 用于更新元素的函数
+  const patchElement = (oldVNode, newVNode) => {
+    const el = (newVNode.el = oldVNode.el); // 浅拷贝
+
+    const oldProps = oldVNode.props || EMPTY_OBJ;
+    const newProps = newVNode.props || EMPTY_OBJ;
+
+    patchChildren(oldVNode, newVNode, el, null);
+
+    patchProps(el, newVNode, oldProps, newProps);
+  };
+
+  // 更新子节点
+  const patchChildren = (oldVNode, newVNode, container, anchor) => {
+    console.log('patchChildren', oldVNode, newVNode);
+    // 旧节点的 children
+    const c1 = oldVNode && oldVNode.children;
+    // 旧节点的 prevShapeFlag
+    const prevShapeFlag = oldVNode ? oldVNode.shapeFlag : 0;
+    // 新节点的 children
+    const c2 = newVNode.children;
+
+    // 新节点的 shapeFlag
+    const { shapeFlag } = newVNode;
+
+    // 新子节点为 TEXT_CHILDREN
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      // 旧子节点为 ARRAY_CHILDREN
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        // TODO: 卸载旧子节点
+      }
+      // 新旧子节点不同
+      if (c2 !== c1) {
+        // 挂载新子节点的文本
+        hostSetElementText(container, c2 as string);
+      }
+    } else {
+      // 旧子节点为 ARRAY_CHILDREN
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        // 新子节点也为 ARRAY_CHILDREN
+        if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          // 这里要进行 diff 运算
+          // patchKeyedChildren(c1, c2, container, anchor);
+        }
+        // 新子节点不为 ARRAY_CHILDREN，则直接卸载旧子节点
+        else {
+          // TODO: 卸载
+        }
+      } else {
+        // 旧子节点为 TEXT_CHILDREN
+        if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+          // 删除旧的文本
+          hostSetElementText(container, '');
+        }
+        // 新子节点为 ARRAY_CHILDREN
+        if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          // TODO: 单独挂载新子节点操作
+        }
+      }
+    }
+  };
+
+  // 更新 props
+  const patchProps = (el: Element, vnode, oldProps, newProps) => {
+    console.log('patchProps执行');
+    // 新旧 props 不相同时才进行处理
+    if (oldProps !== newProps) {
+      // 遍历新的 props，依次触发 hostPatchProp ，赋值新属性
+      for (const key in newProps) {
+        const next = newProps[key];
+        const prev = oldProps[key];
+        if (next !== prev) {
+          hostPatchProp(el, key, prev, next);
+        }
+      }
+      // 存在旧的 props 时
+      if (oldProps !== EMPTY_OBJ) {
+        // 遍历旧的 props，依次触发 hostPatchProp ，删除不存在于新props 中的旧属性
+        for (const key in oldProps) {
+          if (!(key in newProps)) {
+            hostPatchProp(el, key, oldProps[key], null);
+          }
+        }
+      }
+    }
   };
 
   // 用于比较新旧 VNode 的 patch 函数
