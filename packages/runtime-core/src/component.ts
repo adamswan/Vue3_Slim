@@ -84,10 +84,11 @@ export function finishComponentSetup(instance) {
   applyOptions(instance);
 }
 
+// 解析 options API
 function applyOptions(instance: any) {
   const { data: dataOptions, beforeCreate, created, beforeMount, mounted } = instance.type;
 
-  // hooks
+  // 执行生命周期钩子 beforeCreate , 用户没传就不执行
   if (beforeCreate) {
     callHook(beforeCreate, instance.data);
   }
@@ -105,21 +106,21 @@ function applyOptions(instance: any) {
     }
   }
 
-  // hooks
+  // 执行生命周期钩子 created , 用户没传就不执行
   if (created) {
     callHook(created, instance.data);
   }
 
+  // 注册 beforeMount 和 mounted 钩子
+  registerLifecycleHook(onBeforeMount, beforeMount);
+  registerLifecycleHook(onMounted, mounted);
+
   function registerLifecycleHook(register: Function, hook?: Function) {
     register(hook?.bind(instance.data), instance);
   }
-
-  // 注册 hooks
-  registerLifecycleHook(onBeforeMount, beforeMount);
-  registerLifecycleHook(onMounted, mounted);
 }
 
-// 触发 hooks
+// 触发 hooks, 并将 this 指向 instance.data, 这样用户就可以在钩子中访问到 data 中的数据
 function callHook(hook: Function, proxy) {
   hook.bind(proxy)();
 }

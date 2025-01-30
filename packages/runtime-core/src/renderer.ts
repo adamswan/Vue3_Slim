@@ -140,7 +140,7 @@ function baseCreateRenderer(options: RendererOptions): any {
         // 获取 hook
         const { bm, m } = instance;
 
-        // beforeMount hook
+        // 执行生命周期钩子 beforeMount , 用户没传就不执行
         if (bm) {
           bm();
         }
@@ -152,7 +152,7 @@ function baseCreateRenderer(options: RendererOptions): any {
         // 通过 patch 对 subTree，进行打补丁。即：渲染组件
         patch(null, subTree, container, anchor);
 
-        // mounted hook
+        // 执行生命周期钩子 mounted , 用户没传就不执行
         if (m) {
           m();
         }
@@ -160,15 +160,16 @@ function baseCreateRenderer(options: RendererOptions): any {
         // 把组件根节点的 el，作为组件的 el
         initialVNode.el = subTree.el;
 
-        // 修改 mounted 状态
+        // 修改 mounted 状态，表示组件已经挂载
         instance.isMounted = true;
       } else {
         let { next, vnode } = instance;
+
         if (!next) {
           next = vnode;
         }
 
-        // 获取下一次的 subTree
+        // 响应式数据更新后, 生成新的 vnode 树
         const nextTree = renderComponentRoot(instance);
 
         // 保存对应的 subTree，以便进行更新操作

@@ -647,11 +647,11 @@ var Vue = (function (exports) {
 
     var onBeforeMount = createHook("bm" /* LifecycleHooks.BEFORE_MOUNT */);
     var onMounted = createHook("m" /* LifecycleHooks.MOUNTED */);
-    // 创建一个指定的 hook
+    // 创建一个指定的生命周期钩子
     function createHook(lifecycle) {
         return function (hook, target) { return injectHook(lifecycle, hook, target); };
     }
-    // 注册生命周期钩子 hook
+    // 注册生命周期钩子
     function injectHook(type, hook, target) {
         // 将 hook 注册到 组件实例中
         if (target) {
@@ -717,9 +717,10 @@ var Vue = (function (exports) {
         // 改变 options 中的 this 指向
         applyOptions(instance);
     }
+    // 解析 options API
     function applyOptions(instance) {
         var _a = instance.type, dataOptions = _a.data, beforeCreate = _a.beforeCreate, created = _a.created, beforeMount = _a.beforeMount, mounted = _a.mounted;
-        // hooks
+        // 执行生命周期钩子 beforeCreate , 用户没传就不执行
         if (beforeCreate) {
             callHook(beforeCreate, instance.data);
         }
@@ -735,18 +736,18 @@ var Vue = (function (exports) {
                 instance.data = reactive(data);
             }
         }
-        // hooks
+        // 执行生命周期钩子 created , 用户没传就不执行
         if (created) {
             callHook(created, instance.data);
         }
+        // 注册 beforeMount 和 mounted 钩子
+        registerLifecycleHook(onBeforeMount, beforeMount);
+        registerLifecycleHook(onMounted, mounted);
         function registerLifecycleHook(register, hook) {
             register(hook === null || hook === void 0 ? void 0 : hook.bind(instance.data), instance);
         }
-        // 注册 hooks
-        registerLifecycleHook(onBeforeMount, beforeMount);
-        registerLifecycleHook(onMounted, mounted);
     }
-    // 触发 hooks
+    // 触发 hooks, 并将 this 指向 instance.data, 这样用户就可以在钩子中访问到 data 中的数据
     function callHook(hook, proxy) {
         hook.bind(proxy)();
     }
@@ -838,7 +839,7 @@ var Vue = (function (exports) {
                 if (!instance.isMounted) {
                     // 获取 hook
                     var bm = instance.bm, m = instance.m;
-                    // beforeMount hook
+                    // 执行生命周期钩子 beforeMount , 用户没传就不执行
                     if (bm) {
                         bm();
                     }
@@ -847,13 +848,13 @@ var Vue = (function (exports) {
                     console.log('subTree', subTree);
                     // 通过 patch 对 subTree，进行打补丁。即：渲染组件
                     patch(null, subTree, container, anchor);
-                    // mounted hook
+                    // 执行生命周期钩子 mounted , 用户没传就不执行
                     if (m) {
                         m();
                     }
                     // 把组件根节点的 el，作为组件的 el
                     initialVNode.el = subTree.el;
-                    // 修改 mounted 状态
+                    // 修改 mounted 状态，表示组件已经挂载
                     instance.isMounted = true;
                 }
                 else {
@@ -861,7 +862,7 @@ var Vue = (function (exports) {
                     if (!next) {
                         next = vnode;
                     }
-                    // 获取下一次的 subTree
+                    // 响应式数据更新后, 生成新的 vnode 树
                     var nextTree = renderComponentRoot(instance);
                     // 保存对应的 subTree，以便进行更新操作
                     var prevTree = instance.subTree;
