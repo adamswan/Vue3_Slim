@@ -883,9 +883,7 @@ var Vue = (function (exports) {
         return invoker;
     }
 
-    /**
-     * 通过 DOM Properties 指定属性
-     */
+    // 通过 DOM Properties 指定属性
     function patchDOMProp(el, key, value) {
         try {
             el[key] = value;
@@ -925,6 +923,7 @@ var Vue = (function (exports) {
 
     // 处理标签上的各类属性：样式、事件、属性、class 等等
     // 为 prop 进行打补丁操作
+    // 标签上的属性，和 DOM 对象上的属性是不一样的
     var patchProp = function (el, key, prevValue, nextValue) {
         if (key === 'class') {
             patchClass(el, nextValue);
