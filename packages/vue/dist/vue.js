@@ -615,6 +615,22 @@ var Vue = (function (exports) {
         }
     }
 
+    // 解析 render 函数的返回值
+    function renderComponentRoot(instance) {
+        var vnode = instance.vnode, render = instance.render, _a = instance.data, data = _a === void 0 ? {} : _a;
+        var result;
+        try {
+            // 解析到状态组件
+            if (vnode.shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+                // 获取到 result 返回值，如果 render 中使用了 this，则需要修改 this 指向 , 让它指向 data
+                result = normalizeVNode(render.call(data, data));
+            }
+        }
+        catch (err) {
+            console.error(err);
+        }
+        return result;
+    }
     // 标准化 VNode
     function normalizeVNode(child) {
         if (typeof child === 'object') {
@@ -629,6 +645,112 @@ var Vue = (function (exports) {
         return child;
     }
 
+    var onBeforeMount = createHook("bm" /* LifecycleHooks.BEFORE_MOUNT */);
+    var onMounted = createHook("m" /* LifecycleHooks.MOUNTED */);
+    // 创建一个指定的 hook
+    function createHook(lifecycle) {
+        return function (hook, target) { return injectHook(lifecycle, hook, target); };
+    }
+    // 注册生命周期钩子 hook
+    function injectHook(type, hook, target) {
+        // 将 hook 注册到 组件实例中
+        if (target) {
+            target[type] = hook;
+            return hook;
+        }
+    }
+
+    var uid = 0;
+    // 创建组件实例
+    function createComponentInstance(vnode) {
+        var type = vnode.type;
+        var instance = {
+            uid: uid++,
+            vnode: vnode,
+            type: type,
+            subTree: null,
+            effect: null,
+            update: null,
+            render: null,
+            // 生命周期相关
+            isMounted: false,
+            bc: null,
+            c: null,
+            bm: null,
+            m: null // mounted
+        };
+        return instance;
+    }
+    // 规范化组件实例数据
+    function setupComponent(instance) {
+        // 为 render 赋值
+        var setupResult = setupStatefulComponent(instance);
+        return setupResult;
+    }
+    function setupStatefulComponent(instance) {
+        var Component = instance.type;
+        var setup = Component.setup;
+        // 存在 setup ，则直接获取 setup 函数的返回值即可
+        if (setup) {
+            var setupResult = setup();
+            handleSetupResult(instance, setupResult);
+        }
+        else {
+            // 获取组件实例
+            finishComponentSetup(instance);
+        }
+    }
+    function handleSetupResult(instance, setupResult) {
+        // 存在 setupResult，并且它是一个函数，则 setupResult 就是需要渲染的 render
+        if (isFunction(setupResult)) {
+            instance.render = setupResult;
+        }
+        finishComponentSetup(instance);
+    }
+    function finishComponentSetup(instance) {
+        var Component = instance.type;
+        // 组件不存在 render 时，才需要重新赋值
+        if (!instance.render) {
+            // 为 render 赋值
+            instance.render = Component.render;
+        }
+        // 改变 options 中的 this 指向
+        applyOptions(instance);
+    }
+    function applyOptions(instance) {
+        var _a = instance.type, dataOptions = _a.data, beforeCreate = _a.beforeCreate, created = _a.created, beforeMount = _a.beforeMount, mounted = _a.mounted;
+        // hooks
+        if (beforeCreate) {
+            callHook(beforeCreate, instance.data);
+        }
+        // 存在 data 选项时
+        if (dataOptions) {
+            // 触发 dataOptions 函数，拿到 data 对象
+            var data = dataOptions();
+            // 如果拿到的 data 是一个对象
+            if (isObject(data)) {
+                // 则把 data 包装成 reactiv 的响应性数据，赋值给 instance
+                // Vue3 中，即使用选项式API，也没用Object.defineProperty 来实现响应式
+                // 而是使用 Proxy 来实现响应式
+                instance.data = reactive(data);
+            }
+        }
+        // hooks
+        if (created) {
+            callHook(created, instance.data);
+        }
+        function registerLifecycleHook(register, hook) {
+            register(hook === null || hook === void 0 ? void 0 : hook.bind(instance.data), instance);
+        }
+        // 注册 hooks
+        registerLifecycleHook(onBeforeMount, beforeMount);
+        registerLifecycleHook(onMounted, mounted);
+    }
+    // 触发 hooks
+    function callHook(hook, proxy) {
+        hook.bind(proxy)();
+    }
+
     function createRenderer(options) {
         return baseCreateRenderer(options);
     }
@@ -641,12 +763,10 @@ var Vue = (function (exports) {
         // 处理原生DOM元素节点
         var processElement = function (oldVNode, newVNode, container, anchor) {
             if (oldVNode === null) {
-                console.log('挂载');
                 // 挂载
                 mountElement(newVNode, container, anchor);
             }
             else {
-                console.log('更新');
                 // 更新
                 patchElement(oldVNode, newVNode);
             }
@@ -689,9 +809,77 @@ var Vue = (function (exports) {
                 mountChildren(newVNode.children, container, anchor);
             }
             else {
-                console.log('更新');
                 patchChildren(oldVNode, newVNode, container);
             }
+        };
+        // 处理组件
+        var processComponent = function (oldVNode, newVNode, container, anchor) {
+            if (oldVNode == null) {
+                // 挂载
+                mountComponent(newVNode, container, anchor);
+            }
+        };
+        // 挂载组件
+        var mountComponent = function (initialVNode, container, anchor) {
+            // 生成组件实例
+            initialVNode.component = createComponentInstance(initialVNode);
+            // 浅拷贝，绑定同一块内存空间
+            var instance = initialVNode.component;
+            // 标准化组件实例数据
+            setupComponent(instance);
+            // 设置组件渲染
+            setupRenderEffect(instance, initialVNode, container, anchor);
+        };
+        // 设置组件渲染
+        var setupRenderEffect = function (instance, initialVNode, container, anchor) {
+            // 组件挂载和更新的方法
+            var componentUpdateFn = function () {
+                // 当前处于 mounted 之前，即执行 挂载 逻辑
+                if (!instance.isMounted) {
+                    // 获取 hook
+                    var bm = instance.bm, m = instance.m;
+                    // beforeMount hook
+                    if (bm) {
+                        bm();
+                    }
+                    // 从 render 中获取需要渲染的内容
+                    var subTree = (instance.subTree = renderComponentRoot(instance));
+                    console.log('subTree', subTree);
+                    // 通过 patch 对 subTree，进行打补丁。即：渲染组件
+                    patch(null, subTree, container, anchor);
+                    // mounted hook
+                    if (m) {
+                        m();
+                    }
+                    // 把组件根节点的 el，作为组件的 el
+                    initialVNode.el = subTree.el;
+                    // 修改 mounted 状态
+                    instance.isMounted = true;
+                }
+                else {
+                    var next = instance.next, vnode = instance.vnode;
+                    if (!next) {
+                        next = vnode;
+                    }
+                    // 获取下一次的 subTree
+                    var nextTree = renderComponentRoot(instance);
+                    // 保存对应的 subTree，以便进行更新操作
+                    var prevTree = instance.subTree;
+                    instance.subTree = nextTree;
+                    // 通过 patch 进行更新操作
+                    patch(prevTree, nextTree, container, anchor);
+                    // 更新 next
+                    next.el = nextTree.el;
+                }
+            };
+            // 创建包含 scheduler 的 effect 实例
+            var effect = (instance.effect = new ReactiveEffect(componentUpdateFn, function () {
+                return queuePreFlushCb(update);
+            }));
+            // 生成 update 函数
+            var update = (instance.update = function () { return effect.run(); });
+            // 触发 update 函数，本质上触发的是 componentUpdateFn
+            update();
         };
         // 挂载子节点
         var mountChildren = function (children, container, anchor) {
@@ -733,7 +921,6 @@ var Vue = (function (exports) {
         };
         // 更新子节点
         var patchChildren = function (oldVNode, newVNode, container, anchor) {
-            console.log('patchChildren', oldVNode, newVNode);
             // 旧节点的 children
             var c1 = oldVNode && oldVNode.children;
             // 旧节点的 prevShapeFlag
@@ -822,10 +1009,13 @@ var Vue = (function (exports) {
                     break;
                 default:
                     if (shapeFlag & ShapeFlags.ELEMENT) {
-                        // 原生 element
+                        // 挂载原生标签
                         processElement(oldVNode, newVNode, container, anchor);
                     }
-                    else if (shapeFlag & ShapeFlags.COMPONENT) ;
+                    else if (shapeFlag & ShapeFlags.COMPONENT) {
+                        // 挂载.vue 组件
+                        processComponent(oldVNode, newVNode, container, anchor);
+                    }
             }
         };
         // 用于创建 VNode 树的 render 函数

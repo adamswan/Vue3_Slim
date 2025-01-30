@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script src="../../dist/vue.js"></script>
+    <script>
+      const { h, render } = Vue;
+
+      const com = {
+        render: function () {
+          return h('div', '我是一个组件-挂载');
+        }
+      };
+
+      const vnode = h(com);
+
+      render(vnode, document.querySelector('#app'));
+
+      // 2秒后组件更新
+      setTimeout(() => {
+        const com2 = {
+          render: function () {
+            return h('div', '我是一个组件-更新');
+          }
+        };
+        const vnode2 = h(com2);
+
+        render(vnode2, document.querySelector('#app'));
+      }, 1000);
+    </script>
+  </body>
+</html>

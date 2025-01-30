@@ -2,7 +2,10 @@ import { EMPTY_OBJ, isString } from '@vue/shared';
 import { Text, Comment, Fragment } from './vnode';
 import { ShapeFlags } from 'packages/shared/src/shapeFlags';
 import { isSameVNodeType } from './vnode';
-import { normalizeVNode } from './componentRenderUtils';
+import { normalizeVNode, renderComponentRoot } from './componentRenderUtils';
+import { createComponentInstance, setupComponent } from './component';
+import { ReactiveEffect } from 'packages/reactivity/src/effect';
+import { queuePreFlushCb } from './scheduler';
 
 export interface RendererOptions {
   // 创建元素
@@ -56,11 +59,9 @@ function baseCreateRenderer(options: RendererOptions): any {
   // 处理原生DOM元素节点
   const processElement = (oldVNode, newVNode, container, anchor) => {
     if (oldVNode === null) {
-      console.log('挂载');
       // 挂载
       mountElement(newVNode, container, anchor);
     } else {
-      console.log('更新');
       // 更新
       patchElement(oldVNode, newVNode);
     }
@@ -104,9 +105,94 @@ function baseCreateRenderer(options: RendererOptions): any {
     if (oldVNode == null) {
       mountChildren(newVNode.children, container, anchor);
     } else {
-      console.log('更新');
       patchChildren(oldVNode, newVNode, container, anchor);
     }
+  };
+
+  // 处理组件
+  const processComponent = (oldVNode, newVNode, container, anchor) => {
+    if (oldVNode == null) {
+      // 挂载
+      mountComponent(newVNode, container, anchor);
+    }
+  };
+
+  // 挂载组件
+  const mountComponent = (initialVNode, container, anchor) => {
+    // 生成组件实例
+    initialVNode.component = createComponentInstance(initialVNode);
+    // 浅拷贝，绑定同一块内存空间
+    const instance = initialVNode.component;
+
+    // 标准化组件实例数据
+    setupComponent(instance);
+
+    // 设置组件渲染
+    setupRenderEffect(instance, initialVNode, container, anchor);
+  };
+
+  // 设置组件渲染
+  const setupRenderEffect = (instance, initialVNode, container, anchor) => {
+    // 组件挂载和更新的方法
+    const componentUpdateFn = () => {
+      // 当前处于 mounted 之前，即执行 挂载 逻辑
+      if (!instance.isMounted) {
+        // 获取 hook
+        const { bm, m } = instance;
+
+        // beforeMount hook
+        if (bm) {
+          bm();
+        }
+
+        // 从 render 中获取需要渲染的内容
+        const subTree = (instance.subTree = renderComponentRoot(instance));
+        console.log('subTree', subTree);
+
+        // 通过 patch 对 subTree，进行打补丁。即：渲染组件
+        patch(null, subTree, container, anchor);
+
+        // mounted hook
+        if (m) {
+          m();
+        }
+
+        // 把组件根节点的 el，作为组件的 el
+        initialVNode.el = subTree.el;
+
+        // 修改 mounted 状态
+        instance.isMounted = true;
+      } else {
+        let { next, vnode } = instance;
+        if (!next) {
+          next = vnode;
+        }
+
+        // 获取下一次的 subTree
+        const nextTree = renderComponentRoot(instance);
+
+        // 保存对应的 subTree，以便进行更新操作
+        const prevTree = instance.subTree;
+        instance.subTree = nextTree;
+
+        // 通过 patch 进行更新操作
+        patch(prevTree, nextTree, container, anchor);
+
+        // 更新 next
+        next.el = nextTree.el;
+      }
+    };
+
+    // 创建包含 scheduler 的 effect 实例
+    const effect = (instance.effect = new ReactiveEffect(componentUpdateFn, () =>
+      queuePreFlushCb(update)
+    ));
+
+    // 生成 update 函数
+    const update = (instance.update = () => effect.run());
+
+    // 触发 update 函数，本质上触发的是 componentUpdateFn
+    update();
   };
 
   // 挂载子节点
@@ -160,7 +246,6 @@ function baseCreateRenderer(options: RendererOptions): any {
 
   // 更新子节点
   const patchChildren = (oldVNode, newVNode, container, anchor) => {
-    console.log('patchChildren', oldVNode, newVNode);
     // 旧节点的 children
     const c1 = oldVNode && oldVNode.children;
     // 旧节点的 prevShapeFlag
@@ -266,10 +351,11 @@ function baseCreateRenderer(options: RendererOptions): any {
 
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
-          // 原生 element
+          // 挂载原生标签
           processElement(oldVNode, newVNode, container, anchor);
         } else if (shapeFlag & ShapeFlags.COMPONENT) {
-          // .vue 组件
+          // 挂载.vue 组件
+          processComponent(oldVNode, newVNode, container, anchor);
         }
     }
   };
