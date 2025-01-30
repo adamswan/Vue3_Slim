@@ -1,7 +1,8 @@
-import { EMPTY_OBJ } from '@vue/shared';
+import { EMPTY_OBJ, isString } from '@vue/shared';
 import { Text, Comment, Fragment } from './vnode';
 import { ShapeFlags } from 'packages/shared/src/shapeFlags';
 import { isSameVNodeType } from './vnode';
+import { normalizeVNode } from './componentRenderUtils';
 
 export interface RendererOptions {
   // 创建元素
@@ -98,6 +99,28 @@ function baseCreateRenderer(options: RendererOptions): any {
     }
   };
 
+  // 处理Fragment 的打补丁操作
+  const processFragment = (oldVNode, newVNode, container, anchor) => {
+    if (oldVNode == null) {
+      mountChildren(newVNode.children, container, anchor);
+    } else {
+      console.log('更新');
+      patchChildren(oldVNode, newVNode, container, anchor);
+    }
+  };
+
+  // 挂载子节点
+  const mountChildren = (children, container, anchor) => {
+    // 如果是字符串，则将其拆分成单个字符 demo: 'abc' => ['a', 'b', 'c']
+    if (isString(children)) {
+      children = children.split('');
+    }
+    for (let i = 0; i < children.length; i++) {
+      const child = (children[i] = normalizeVNode(children[i]));
+      patch(null, child, container, anchor);
+    }
+  };
+
   // 用于挂载元素的函数
   const mountElement = (vnode, container, anchor) => {
     const { type, props, shapeFlag } = vnode;
@@ -187,7 +210,6 @@ function baseCreateRenderer(options: RendererOptions): any {
 
   // 更新 props
   const patchProps = (el: Element, vnode, oldProps, newProps) => {
-    console.log('patchProps执行');
     // 新旧 props 不相同时才进行处理
     if (oldProps !== newProps) {
       // 遍历新的 props，依次触发 hostPatchProp ，赋值新属性
@@ -239,7 +261,7 @@ function baseCreateRenderer(options: RendererOptions): any {
 
       case Fragment:
         // 如果新 VNode 的类型是片段节点，则处理片段节点的更新
-        // processFragment(oldVNode, newVNode, container);
+        processFragment(oldVNode, newVNode, container, anchor);
         break;
 
       default:

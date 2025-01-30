@@ -615,6 +615,20 @@ var Vue = (function (exports) {
         }
     }
 
+    // 标准化 VNode
+    function normalizeVNode(child) {
+        if (typeof child === 'object') {
+            return cloneIfMounted(child);
+        }
+        else {
+            return createVNode(Text, null, String(child));
+        }
+    }
+    // clone VNode
+    function cloneIfMounted(child) {
+        return child;
+    }
+
     function createRenderer(options) {
         return baseCreateRenderer(options);
     }
@@ -667,6 +681,27 @@ var Vue = (function (exports) {
             else {
                 // 无更新
                 newVNode.el = oldVNode.el;
+            }
+        };
+        // 处理Fragment 的打补丁操作
+        var processFragment = function (oldVNode, newVNode, container, anchor) {
+            if (oldVNode == null) {
+                mountChildren(newVNode.children, container, anchor);
+            }
+            else {
+                console.log('更新');
+                patchChildren(oldVNode, newVNode, container);
+            }
+        };
+        // 挂载子节点
+        var mountChildren = function (children, container, anchor) {
+            // 如果是字符串，则将其拆分成单个字符 demo: 'abc' => ['a', 'b', 'c']
+            if (isString(children)) {
+                children = children.split('');
+            }
+            for (var i = 0; i < children.length; i++) {
+                var child = (children[i] = normalizeVNode(children[i]));
+                patch(null, child, container, anchor);
             }
         };
         // 用于挂载元素的函数
@@ -736,7 +771,6 @@ var Vue = (function (exports) {
         };
         // 更新 props
         var patchProps = function (el, vnode, oldProps, newProps) {
-            console.log('patchProps执行');
             // 新旧 props 不相同时才进行处理
             if (oldProps !== newProps) {
                 // 遍历新的 props，依次触发 hostPatchProp ，赋值新属性
@@ -784,7 +818,7 @@ var Vue = (function (exports) {
                     break;
                 case Fragment:
                     // 如果新 VNode 的类型是片段节点，则处理片段节点的更新
-                    // processFragment(oldVNode, newVNode, container);
+                    processFragment(oldVNode, newVNode, container, anchor);
                     break;
                 default:
                     if (shapeFlag & ShapeFlags.ELEMENT) {
