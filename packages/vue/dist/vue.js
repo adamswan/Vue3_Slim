@@ -763,9 +763,14 @@ var Vue = (function (exports) {
         };
         // 用于创建 VNode 树的 render 函数
         var render = function (vnode, container) {
-            if (vnode === null) ;
+            if (vnode === null) {
+                // 如果旧 vnode 为 null，则直接将容器清空
+                if (container._vnode) {
+                    unmount(container._vnode);
+                }
+            }
             else {
-                // 如果 vnode 不为 null，则调用 patch 方法进行渲染
+                // 如果 vnode 不为 null，则调用 patch 方法进行更新
                 patch(container._vnode || null, vnode, container);
             }
             // 更新 _vnode ，即将新的 vnode 赋值给容器的 _vnode 属性，作为旧的 vnode，下次渲染时可以进行比较
