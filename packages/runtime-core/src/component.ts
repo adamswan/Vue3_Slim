@@ -42,14 +42,21 @@ export function setupComponent(instance) {
   return setupResult;
 }
 
+// 处理 setup 函数
 function setupStatefulComponent(instance) {
   const Component = instance.type;
+
   const { setup } = Component;
-  // 存在 setup ，则直接获取 setup 函数的返回值即可
+
+  // 如果 setup 存在，则直接调用
   if (setup) {
+    // 使用 composition API
+    // 调用 setup 函数，得到返回值 setupResult
     const setupResult = setup();
+    // 处理 返回值
     handleSetupResult(instance, setupResult);
   } else {
+    // 使用 options API
     // 获取组件实例
     finishComponentSetup(instance);
   }

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+
+  <body>
+    <div id="app"></div>
+
+    <script src="../../dist/vue.js"></script>
+    <script>
+      const { h, render, ref } = Vue;
+
+      const com = {
+        setup() {
+          const name = ref('周子琰');
+
+          // 2s后修改name的值
+          setTimeout(() => {
+            name.value = '刘亦菲';
+          }, 2000);
+
+          // 如果返回一个函数，那么函数会作为组件的渲染函数
+          return () => h('div', name.value);
+        }
+      };
+
+      const vnode = h(com);
+      const container = document.querySelector('#app');
+      render(vnode, container);
+    </script>
+  </body>
+</html>
