@@ -16,6 +16,7 @@ export const nodeOps = {
 
   // 为指定的 DOM 设置文本内容
   setElementText: (el, text) => {
+    // console.log('188', el, text);
     el.textContent = text;
   },
 
