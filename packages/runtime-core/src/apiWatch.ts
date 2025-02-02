@@ -1,7 +1,6 @@
 import { isReactive, ReactiveEffect } from '@vue/reactivity';
-import { EMPTY_OBJ } from '@vue/shared';
 import { queuePreFlushCb } from '@vue/runtime-core';
-import { hasChanged, isObject } from '@vue/shared';
+import { hasChanged, isObject, EMPTY_OBJ } from '@vue/shared';
 
 export interface WatchOptions {
   immediate?: boolean;

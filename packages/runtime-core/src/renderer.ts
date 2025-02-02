@@ -139,6 +139,7 @@ function baseCreateRenderer(options: RendererOptions): any {
       if (!instance.isMounted) {
         // 获取 hook
         const { bm, m } = instance;
+        console.log('打印instance', instance);
 
         // 执行生命周期钩子 beforeMount , 用户没传就不执行
         if (bm) {

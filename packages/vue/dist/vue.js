@@ -844,6 +844,7 @@ var Vue = (function (exports) {
                 if (!instance.isMounted) {
                     // 获取 hook
                     var bm = instance.bm, m = instance.m;
+                    console.log('打印instance', instance);
                     // 执行生命周期钩子 beforeMount , 用户没传就不执行
                     if (bm) {
                         bm();
